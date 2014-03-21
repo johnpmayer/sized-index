@@ -19,7 +19,7 @@ module Data.Concurrent.BTree.Internal where
 import Control.Applicative 
 import Control.Concurrent.STM 
 import Data.Type.Natural 
-import Data.Vector.Sized (Vector(Nil))
+import Data.Vector.Sized (Vector(Nil,(:-)))
 import qualified Data.Vector.Sized as V
 import Prelude hiding (head, tail, foldl, map)
 --import Proof.Equational
@@ -56,8 +56,16 @@ singleton x = Leaf <$> newTVar (V.singleton x)
 searchLeaf :: (Eq k, Keyed k a) => k -> Vector a n -> [a]
 searchLeaf key vec = filter (\x -> key == tokey x) . V.toList $ vec
 
-search :: (Eq k, Keyed k a) => k -> BNode (R r) (H h) (O m) n k a -> STM [a]
-search key (Leaf leaf) = searchLeaf key <$> readTVar leaf
-search key (Internal node) = undefined node key
+choosePointer :: (Ord k) => k ->
+  Vector (forall n'. BNode (R False) (H h) (O m) n' k a) (S n1) -> 
+  Vector k n1 -> 
+  BNode (R False) (H h) (O m) n2 k a
+choosePointer _ (a :- _) Nil = a
+choosePointer key (a :- as) (b :- bs) = if key < b then a else choosePointer key as bs
 
+search :: (Ord k, Keyed k a) => k -> forall n. BNode (R r) (H h) (O m) n k a -> STM [a]
+search key (Leaf leaf) = searchLeaf key <$> readTVar leaf
+search key (Internal node) = do
+  (cpts,keys) <- readTVar node
+  search key $ choosePointer key cpts keys
 
