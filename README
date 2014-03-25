@@ -1,0 +1,10 @@
+
+sized-index
+===========
+
+Size-Generic Index Structures
+
+Implementation of popular index data structures.
+
+Parameters such as node-width, tree height, and dimensions are encoded in types.
+
